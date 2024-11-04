@@ -5,7 +5,7 @@ const perspective = 50;
 
 const carSize = 80;
 const objectSize = 50;
-const gameTime = 30000;
+const gameTime = 15000;
 
 let ground;
 const groundWidth = 50000;
@@ -21,15 +21,14 @@ let message = null;
 let continueButton = null;
 let startButton = null;
 let bgm = null;
+let rankingElement = null;
 let gameCount = 0;
 let updateDistanceNumber = 500;
+let latestScoreId = null;
+
 const gameStart = () => {
 
-  // if (continueButton) {
-  //   continueButton.style.display = "none";
-  // }
-
-  if(gameCount >= 1){
+  if (gameCount >= 1) {
     for (const object of objectList) {
       object.element.remove();
     }
@@ -39,29 +38,31 @@ const gameStart = () => {
     heroY = 0;
     heroDeg = 0;
     updateDistance = updateDistanceNumber;
-    if(message){
+    latestScoreId = null;
+    if (message) {
       message.remove();
     }
     // message.textContent = "";
-  
+
     if (container) {
       container.remove();
     }
-  
+
     if (ground) {
       ground.remove();
     }
-  
+
     if (road) {
       road.remove();
     }
-  
-    if(startButton){
+
+    if (startButton) {
       startButton.remove();
     }
-    if(bgm){
+    if (bgm) {
       bgm.remove();
     }
+
     init();
   }
   bgm.play();
@@ -72,18 +73,11 @@ const addBGM = () => {
 
   bgm = document.createElement("audio");
   bgm.src = "GTO.mp3";
-  console.log('k');
-  //bgm.src = "";
-  //bgm.autoplay = true;
+
   bgm.loop = true;
   bgm.volume = 0.5;
   document.body.appendChild(bgm);
 
-  // 自動再生を試みる
-  // bgm.play().catch((e) => {
-  //   console.error("オーディオの自動再生がブロックされました：",e);
-  //   alert("オーディオ再生がブロックされています。クリックしてください。");
-  // })
 };
 const render = () => {
   ground.style.transform = `
@@ -128,20 +122,18 @@ const createObject = (fromY) => {
     element.style.width = `${objectSize}px`;
     element.style.height = `${objectSize}px`;
     element.style.fontSize = `${objectSize}px`;
-    // element.style.backgroundColor = "#880";
     element.style.overflow = "hidden";
     element.textContent = isCoin ? "💰" : "🗿";
 
     addObjects.push({ x, y, element, isCoin });
-    // container.append(element);
   }
   addObjects.sort((a, b) => a.y - b.y);
   addObjects.forEach((object) =>
     container.insertBefore(object.element, road.nextSibling)
   );
-  //console.log(objectList);
+
   objectList = [...objectList, ...addObjects];
-  //console.log(objectList);
+
 };
 let score = 0;
 
@@ -204,32 +196,9 @@ const documentCreate = () => {
   startButton.style.top = `${height + 25}px`;
   startButton.style.left = `${5}px`;
   startButton.style.cursor = "pointer";
-// 中央から少し下に配置
-// startButton.style.top = "50%";
-// startButton.style.left = "50%";
-// startButton.style.transform = "translate(-50%, -50%) translateY(50px)";
-startButton.addEventListener("click",gameStart);
+  startButton.addEventListener("click", gameStart);
 
   document.body.append(startButton);
-
-  // continueButton = document.createElement("button");
-  // continueButton.style.position = "absolute";
-  // continueButton.style.display = "none";
-  // continueButton.style.padding = "10px 20px";
-  // continueButton.style.fontSize = "16px";
-  // continueButton.style.color = "#fff";
-  // continueButton.style.backgroundColor = "#77DD77";
-  // continueButton.style.border = "none";
-  // continueButton.style.top = `${height + 25}px`;
-  // continueButton.style.left = `${5}px`;
-  // continueButton.style.cursor = "pointer";
-  // continueButton.textContent = "続ける";
-  // continueButton.addEventListener("click", resetGame);
-  // continueButton.style.transform = "translateX(-50%)";
-  // continueButton.style.bottom = "20px";
-  // continueButton.style.left = "50%";
-
-  //message.insertAdjacentElement("afterend",continueButton);
 
   container = document.createElement("div");
   document.body.insertBefore(container, svg);
@@ -268,21 +237,30 @@ startButton.addEventListener("click",gameStart);
 // ランキングの表示
 
 const displayRanking = async () => {
+  if(rankingElement){
+    rankingElement.remove();
+  }
   try {
     const response = await fetch("http://localhost:3000/scores");
     const topScores = await response.json();
-    const rankingElement = document.createElement("div");
+    rankingElement = document.createElement("div");
     rankingElement.style.position = "absolute";
-    rankingElement.style.top = "350px";
-    rankingElement.style.left = "5px";
-    rankingElement.textContent = "Ranking:";
+    rankingElement.style.top = `${height + 85}px`;
+    rankingElement.style.left = `${5}px`;
+    rankingElement.textContent = "■Ranking";
     document.body.appendChild(rankingElement);
 
     topScores.forEach((score, index) => {
       const scoreElement = document.createElement("div");
-      scoreElement.textContent = `${index + 1}.${score.name} - ${score.score
-        }`;
-      rankingElement.appendChild(scoreElement);
+      scoreElement.textContent = `${index + 1}. ${score.score
+        } (${new Date(score.date).toLocaleString("ja-JP",{year: 'numeric',month: '2-digit', day:'2-digit',hour:'2-digit',minute:'2-digit'})})`;
+      
+      if(score.date === latestScoreId){
+        scoreElement.style.color = '#f00';
+        rankingElement.innerHTML = "■Ranking <span style: 'color: #f00'>★更新</span>";
+      }
+      
+        rankingElement.appendChild(scoreElement);
     });
   } catch (error) {
     console.log("Failed to fetch scores:", error);
@@ -293,7 +271,7 @@ const init = () => {
 
 
   documentCreate();
-
+  displayRanking();
 
   const styleSheet = document.createElement("style");
   // @keyframeルールをjavascriptで定義
@@ -337,8 +315,7 @@ const init = () => {
   // スタイルシートに追加
   styleSheet.innerHTML = keyframes;
   document.head.appendChild(styleSheet);
-  //　アニメーションを適用
-  container.style.animation = "skyTransition 30s forwards";
+
 
 
 
@@ -380,26 +357,29 @@ const init = () => {
 
 // ゲーム終了時にスコアを保存し、ランキングを表示する
 const endGame = async () => {
+
   bgm.pause();
   gameCount++;
   startButton.innerHTML = "再スタート";
   startButton.style.display = "block";
 
-  // プレーヤー名を取得し、スコアを保存
-  // const playerName = prompt("Enter your name:");
+  // 新しいスコアのIDを生成
+  latestScoreId = new Date().toISOString();
 
-  // try {
-  //   await fetch("http://localhost:3000/scores", {
-  //     method: "POST",
-  //     headers: {
-  //       "Content-Type": "application/json",
-  //     },
-  //     body: JSON.stringify({ score }),
-  //   });
-  //   displayRanking();
-  // } catch (error) {
-  //   console.error("Faild to save score:", error);
-  // }
+  // スコアを表示
+  try {
+    await fetch("http://localhost:3000/score", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ score, date: latestScoreId }),
+    });
+    displayRanking(); // スコア保存時にランキングを更新表示
+  } catch (error) {
+
+    console.error("スコアの保存に失敗しました：", error);
+  }
 
 };
 let heroX = 0;
@@ -407,9 +387,11 @@ let heroY = 0;
 let heroDeg = 0;
 
 const raceStart = async () => {
-  //resetGame();
-  // init();
+
   startButton.style.display = "none";
+
+    //　アニメーションを適用
+    container.style.animation = `skyTransition ${gameTime / 1000}s forwards`;
 
 
   let v = 0;
@@ -424,8 +406,6 @@ const raceStart = async () => {
     }
     if (heroY > updateDistance) {
       updateDistance += 1000;
-      console.log(`heroY:${heroY}`);
-      console.log(`updateDistance:${updateDistance}`);
       createObject(updateDistance);
     }
     if (dx > 0) {
@@ -451,7 +431,7 @@ const raceStart = async () => {
     heroY += v;
     heroX += dx * 3;
     heroX = Math.max(Math.min(heroX, roadWidth / 2), -roadWidth / 2);
-    //heroX = roadWidth / 2;
+
     render();
     if (leftTime === 0) {
       endGame();
