@@ -35,8 +35,6 @@ const writeScores = async (scores) => {
 
 app.get("/scores", async (req, res) => {
   const scores = await readScores();
-  //上位5位のスコアを返す
-  // res.json(scores.sort((a, b) => b.score - a.score).slice(0, 5));
   res.json(scores);
 });
 

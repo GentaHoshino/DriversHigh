@@ -42,7 +42,6 @@ const gameStart = () => {
     if (message) {
       message.remove();
     }
-    // message.textContent = "";
 
     if (container) {
       container.remove();
@@ -109,6 +108,22 @@ const render = () => {
         `;
   }
 };
+
+const blinkCar = () => {
+
+  let isVisible = true;
+
+  const intervalId = setInterval(() => {
+    svg.style.visibility = isVisible ? 'hidden' : 'visible';
+    isVisible = !isVisible;
+  },100);
+
+  setTimeout(() => {
+    clearInterval(intervalId);
+    svg.style.visibility = 'visible';
+  },1000);
+
+}
 let objectList = [];
 
 const createObject = (fromY) => {
@@ -164,10 +179,10 @@ const checkCollision = (from, to) => {
 let updateDistance = updateDistanceNumber;
 let dx = 0;
 
-
+let svg;
 const documentCreate = () => {
 
-  const svg = document.getElementsByTagName("svg")[0];
+  svg = document.getElementsByTagName("svg")[0];
   svg.style.position = "absolute";
 
   svg.style.width = `${carSize}px`;
@@ -237,30 +252,51 @@ const documentCreate = () => {
 // ランキングの表示
 
 const displayRanking = async () => {
-  if(rankingElement){
-    rankingElement.remove();
-  }
-  try {
-    const response = await fetch("http://localhost:3000/scores");
-    const topScores = await response.json();
+
+
+  let titleElement, scoreContainer;
+  // ランキング全体のコンテナを初期化
+  if (!rankingElement) {
     rankingElement = document.createElement("div");
     rankingElement.style.position = "absolute";
     rankingElement.style.top = `${height + 85}px`;
     rankingElement.style.left = `${5}px`;
-    rankingElement.textContent = "■Ranking";
     document.body.appendChild(rankingElement);
+    // タイトル要素を作成して追加
+    titleElement = document.createElement("div");
+    titleElement.textContent = "■Ranking";
+    titleElement.style.fontWeight = "bold";
+    rankingElement.appendChild(titleElement);
+
+    scoreContainer = document.createElement("div");
+    rankingElement.appendChild(scoreContainer);
+
+
+  } else {
+
+        // 初期化時にタイトルとスコアリストコンテナを取得
+        titleElement = rankingElement.firstChild;
+        scoreContainer = rankingElement.lastChild;
+        titleElement.textContent = "■Ranking";
+        scoreContainer.innerHTML = ""; // 前のスコアリストをクリア
+  }
+
+  try {
+    const response = await fetch("http://localhost:3000/scores");
+    const topScores = await response.json();
+
 
     topScores.forEach((score, index) => {
       const scoreElement = document.createElement("div");
       scoreElement.textContent = `${index + 1}. ${score.score
-        } (${new Date(score.date).toLocaleString("ja-JP",{year: 'numeric',month: '2-digit', day:'2-digit',hour:'2-digit',minute:'2-digit'})})`;
-      
-      if(score.date === latestScoreId){
+        } (${new Date(score.date).toLocaleString("ja-JP", { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })})`;
+
+      if (score.date === latestScoreId) {
         scoreElement.style.color = '#f00';
-        rankingElement.innerHTML = "■Ranking <span style: 'color: #f00'>★更新</span>";
+        titleElement.textContent += " ★更新";
       }
-      
-        rankingElement.appendChild(scoreElement);
+
+      scoreContainer.appendChild(scoreElement);
     });
   } catch (error) {
     console.log("Failed to fetch scores:", error);
@@ -312,9 +348,20 @@ const init = () => {
     }
   }`;
 
+  const skyBackground = document.createElement("div");
+  document.body.appendChild(skyBackground);
+  skyBackground.style.position = "absolute";
+  skyBackground.width = "100%";
+  skyBackground.height = "100%";
+  skyBackground.top = 0;
+  skyBackground.height = 0;
+  skyBackground.style.zIndex = -1;
+  skyBackground.style.animation = `skyTransition ${gameTime / 1000}s forwards`;
   // スタイルシートに追加
   styleSheet.innerHTML = keyframes;
   document.head.appendChild(styleSheet);
+  //　アニメーションを適用
+ // container.style.animation = `skyTransition ${gameTime / 1000}s forwards`;
 
 
 
@@ -390,8 +437,8 @@ const raceStart = async () => {
 
   startButton.style.display = "none";
 
-    //　アニメーションを適用
-    container.style.animation = `skyTransition ${gameTime / 1000}s forwards`;
+  //　アニメーションを適用
+  container.style.animation = `skyTransition ${gameTime / 1000}s forwards`;
 
 
   let v = 0;
@@ -402,6 +449,7 @@ const raceStart = async () => {
     let leftTime = Math.max(0, (endTime - Date.now()) / 1000);
     message.textContent = `Time: ${leftTime.toFixed(3)} / score:${score}`;
     if (v > 0 && checkCollision(heroY - 30, heroY - 30 + v)) {
+      blinkCar();
       v = -v;
     }
     if (heroY > updateDistance) {
